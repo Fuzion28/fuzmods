@@ -300,6 +300,21 @@ async function checkSelfUpdate() {
   };
 }
 
+// ---------- re-check ----------
+// a new release shows without a restart: re-check when the window comes back, at most every 2 minutes (GitHub allows 60 calls an hour)
+let lastCheck = Date.now();
+window.addEventListener("focus", () => {
+  if (Date.now() - lastCheck < 120000) return;
+  lastCheck = Date.now();
+  checkSelfUpdate();
+  state.mods.forEach(async (m) => {
+    if (state.busy[m.id]) return;
+    // keeps what is shown when GitHub can't be reached
+    const r = await invoke("fetch_release", { id: m.id }).catch(() => null);
+    if (r && !state.busy[m.id]) { state.releases[m.id] = r; render(); }
+  });
+});
+
 // ---------- start ----------
 (async () => {
   state.mods = await invoke("list_mods");

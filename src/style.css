@@ -113,19 +113,21 @@ code { font-family: "Cascadia Code", Consolas, monospace; font-size: .92em; back
 
 /* ---------- detail ---------- */
 .detail { flex: 1; overflow-y: auto; min-width: 0; }
+/* side margin: 40px, growing in big windows so the content stays a centered 1100px column (% = width of the detail pane) */
+.detail { --gutter: max(40px, calc((100% - 1100px) / 2)); }
 .detail::-webkit-scrollbar { width: 10px; }
 .detail::-webkit-scrollbar-thumb { background: #ffffff14; border-radius: 10px; border: 3px solid var(--bg); }
 
-.hero { position: relative; height: 270px; overflow: hidden; display: flex; align-items: flex-end; }
+.hero { position: relative; height: clamp(270px, 34vh, 360px); overflow: hidden; display: flex; align-items: flex-end; }
 .hero-bg { position: absolute; inset: -40px; background-size: cover; background-position: center; filter: blur(40px) saturate(1.4); opacity: .55; transform: scale(1.1); }
 .hero-bg.none { background: radial-gradient(circle at 20% 30%, #7c5cff66, transparent 55%), radial-gradient(circle at 80% 60%, #19d3ff44, transparent 55%); filter: none; }
 .hero::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 0%, #0a0b10cc 70%, var(--bg) 100%); }
-.hero-art { position: absolute; right: 40px; top: 34px; height: 170px; max-width: 46%; object-fit: contain; z-index: 1; filter: drop-shadow(0 20px 40px #000a); }
-.hero-content { position: relative; z-index: 2; padding: 0 40px 26px; width: 100%; }
+.hero-art { position: absolute; right: var(--gutter); top: 34px; height: clamp(170px, 22vh, 230px); max-width: 46%; object-fit: contain; z-index: 1; filter: drop-shadow(0 20px 40px #000a); }
+.hero-content { position: relative; z-index: 2; padding: 0 var(--gutter) 26px; width: 100%; }
 .hero h1 { font-size: 40px; font-weight: 750; letter-spacing: -1px; }
 .hero .tagline { color: #c4c8d8; font-size: 14px; line-height: 1.55; margin-top: 8px; max-width: 560px; }
 
-.body { max-width: 1200px; padding: 6px 40px 40px; display: flex; flex-direction: column; gap: 22px; }
+.body { padding: 6px var(--gutter) 40px; display: flex; flex-direction: column; gap: 22px; }
 .actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .chips { display: flex; gap: 8px; margin-left: auto; }
 .chip { font-size: 12px; padding: 6px 11px; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--border); color: var(--muted); white-space: nowrap; }

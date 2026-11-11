@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>FuzMods</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="titlebar" data-tauri-drag-region>
+    <div class="brand" data-tauri-drag-region>
+      <span class="brand-mark">F</span>
+      <span class="brand-name" data-tauri-drag-region>Fuz<b>Mods</b></span>
+    </div>
+    <div class="win-buttons">
+      <button id="win-min" title="Minimize" aria-label="Minimize"><svg viewBox="0 0 10 10"><path d="M1 5h8"/></svg></button>
+      <button id="win-close" class="close" title="Close" aria-label="Close"><svg viewBox="0 0 10 10"><path d="M1 1l8 8M9 1l-8 8"/></svg></button>
+    </div>
+  </header>
+
+  <div class="app">
+    <aside class="sidebar">
+      <div class="side-label">Library</div>
+      <nav id="mod-list"></nav>
+
+      <div class="side-bottom">
+        <button id="play" class="btn btn-play">
+          <svg viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5z"/></svg>
+          Launch Kronos
+        </button>
+        <div class="folder">
+          <div class="folder-label">Kronos folder</div>
+          <div class="folder-path" id="folder-path">Looking for Kronos…</div>
+          <div class="folder-actions">
+            <button class="link" id="change-folder">Change</button>
+            <button class="link" id="open-kronos">Open</button>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main id="detail" class="detail"></main>
+  </div>
+
+  <div id="setup" class="setup hidden">
+    <div class="setup-card">
+      <span class="brand-mark big">F</span>
+      <h1>Find your Kronos folder</h1>
+      <p>FuzMods installs mods into Kronos. Pick the folder that contains <code>KronosLauncher.exe</code>.</p>
+      <button class="btn btn-primary" id="setup-browse">Browse…</button>
+      <p class="setup-hint" id="setup-hint"></p>
+    </div>
+  </div>
+
+  <div id="dialog" class="dialog hidden">
+    <div class="dialog-card">
+      <h2 id="dialog-title"></h2>
+      <p id="dialog-text"></p>
+      <div class="dialog-actions">
+        <button class="btn btn-ghost" id="dialog-cancel">Cancel</button>
+        <button class="btn btn-danger" id="dialog-ok">Uninstall</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toasts" class="toasts"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -79,7 +79,7 @@ function renderList() {
   $("mod-list").innerHTML = state.mods.map((m) => {
     const r = state.releases[m.id];
     const s = status(m);
-    const text = { missing: "Not installed", update: "Update available", ok: `Installed · v${esc(m.installed || "")}`, unknown: `Installed · v${esc(m.installed || "")}` }[s];
+    const text = { missing: r && r.unavailable ? "Unavailable for now" : "Not installed", update: "Update available", ok: `Installed · v${esc(m.installed || "")}`, unknown: `Installed · v${esc(m.installed || "")}` }[s];
     const dot = s === "ok" ? "ok" : s === "update" ? "warn" : "";
     const icon = r && r.image ? `<img src="${esc(r.image)}" alt="">` : esc(m.name[0]);
     return `<button class="mod-item ${m.id === state.selected ? "active" : ""}" data-id="${m.id}">
@@ -99,6 +99,7 @@ function renderDetail() {
 
   let main;
   if (busy) main = `<button class="btn btn-primary" disabled><span class="spin"></span>${busy.label}</button>`;
+  else if (r && r.unavailable) main = `<button class="btn btn-primary" disabled>Unavailable for now</button>`;
   else if (s === "missing") main = `<button class="btn btn-primary" data-act="install" ${!r || r.error || anyBusy ? "disabled" : ""}><svg viewBox="0 0 24 24"><path d="M11 4h2v9.2l3.6-3.6 1.4 1.4-6 6-6-6 1.4-1.4 3.6 3.6zM5 18h14v2H5z"/></svg>Install</button>`;
   else if (s === "update") main = `<button class="btn btn-primary" data-act="install" ${anyBusy ? "disabled" : ""}><svg viewBox="0 0 24 24"><path d="M12 4a8 8 0 0 1 7.9 6.7l-2 .3A6 6 0 0 0 6.3 9H9v2H3V5h2v2.3A8 8 0 0 1 12 4zm-7.9 9.3 2-.3A6 6 0 0 0 17.7 15H15v-2h6v6h-2v-2.3A8 8 0 0 1 4.1 13.3z"/></svg>Update to v${esc(r.version)}</button>`;
   else main = `<button class="btn btn-ghost" data-act="install" ${!r || r.error || anyBusy ? "disabled" : ""} title="Download every file again">Reinstall</button>`;
@@ -119,9 +120,9 @@ function renderDetail() {
     : "";
 
   const clash = m.installed ? conflictsOf(m) : [];
-  const warning = clash.length
+  const warning = (clash.length
     ? `<div class="warning"><span class="dot warn"></span><span><b>${esc(m.name)}</b> and <b>${clash.map((o) => esc(o.name)).join(", ")}</b> are both installed but can't run together. Uninstall one of them.</span></div>`
-    : "";
+    : "") + (r && r.unavailable ? `<div class="warning"><span class="dot warn"></span><span>${esc(r.unavailable)}</span></div>` : "");
 
   const features = state.tab === "features";
   let notes;

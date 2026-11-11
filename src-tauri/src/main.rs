@@ -88,6 +88,8 @@ struct ReleaseInfo {
     features: String,
     /// None when not installed; true when any installed file differs from the release
     changed: Option<bool>,
+    /// set when the mod is switched off for now: install and update are blocked, the text says why
+    unavailable: Option<String>,
 }
 
 fn file_matches(path: &Path, a: &GhAsset) -> bool {
@@ -278,6 +280,21 @@ async fn readme(http: &reqwest::Client, repo: &str) -> Option<String> {
     resp.error_for_status().ok()?.text().await.ok()
 }
 
+// mods paused from GitHub ({"id": "reason"} in the fuzmods repo), so one comes back without a FuzMods release; unreadable = available
+async fn unavailable_reason(http: &reqwest::Client, id: &str) -> Option<String> {
+    let v: serde_json::Value = http
+        .get("https://raw.githubusercontent.com/Fuzion28/fuzmods/main/unavailable.json")
+        .send()
+        .await
+        .ok()?
+        .error_for_status()
+        .ok()?
+        .json()
+        .await
+        .ok()?;
+    v.get(id)?.as_str().map(String::from)
+}
+
 #[tauri::command]
 async fn fetch_release(id: String, state: State<'_, AppState>) -> Result<ReleaseInfo, String> {
     let def = mod_def(&id)?;
@@ -292,6 +309,7 @@ async fn fetch_release(id: String, state: State<'_, AppState>) -> Result<Release
         None => None,
     };
     let features = readme(&state.http, def.repo).await.unwrap_or_default();
+    let unavailable = unavailable_reason(&state.http, def.id).await;
     Ok(ReleaseInfo {
         features,
         version: version_of_tag(&rel.tag_name),
@@ -303,6 +321,7 @@ async fn fetch_release(id: String, state: State<'_, AppState>) -> Result<Release
         size: files.iter().map(|(a, _)| a.size).sum(),
         files: files.len(),
         changed,
+        unavailable,
     })
 }
 

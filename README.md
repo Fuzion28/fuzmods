@@ -15,7 +15,11 @@ Get `FuzMods.exe` from the [latest release](https://github.com/Fuzion28/fuzmods/
 - Detects updates by comparing every installed file with the latest GitHub release
 - Every download is checked (size and SHA-256) before the mod is replaced; if anything fails, the old version is restored
 - Your settings, builds, Forge saves and personal bests are never touched
+- FuzMenu and FuzSpeedrun can't be installed together (FuzMenu already includes the speedrun timer): installing one removes the other
+- **All features** tab with the full feature list of each mod
 - Release notes for each mod, and a Launch Kronos button
+- Resizable window with maximize
+- Updates itself: when a new FuzMods is out, an Update button shows in the title bar
 
 ## Notes
 

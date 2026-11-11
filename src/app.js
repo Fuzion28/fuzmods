@@ -3,7 +3,7 @@ const { listen } = window.__TAURI__.event;
 const win = window.__TAURI__.window.getCurrentWindow();
 
 const $ = (id) => document.getElementById(id);
-const state = { mods: [], releases: {}, selected: null, busy: {}, kronos: null };
+const state = { mods: [], releases: {}, selected: null, busy: {}, kronos: null, tab: "notes" };
 
 // ---------- helpers ----------
 const esc = (s) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -15,20 +15,29 @@ function inline(s) {
     .replace(/\[([^\]]+)\]\((https:\/\/github\.com\/[^)\s]+)\)/g, '<a data-url="$2">$1</a>');
 }
 
-// small markdown subset used in release notes: headings, bullets, paragraphs, bold, code, GitHub links
+// small markdown subset used in release notes and READMEs: headings, bullets, tables, paragraphs, bold, code, GitHub links
 function markdown(md) {
-  let html = "", list = false;
+  let html = "", list = false, table = false;
   for (const raw of md.replace(/\r/g, "").split("\n")) {
     const line = raw.trim();
     const bullet = line.match(/^[-*]\s+(.*)/);
+    const row = line.startsWith("|");
     if (!bullet && list) { html += "</ul>"; list = false; }
+    if (!row && table) { html += "</table>"; table = false; }
     if (!line) continue;
     const h = line.match(/^#{1,6}\s+(.*)/);
-    if (h) html += `<h3>${inline(h[1])}</h3>`;
+    if (row) {
+      if (/^\|[\s:|-]+\|$/.test(line)) continue; // header separator
+      const cells = line.slice(1, line.endsWith("|") ? -1 : undefined).split("|").map((c) => inline(c.trim()));
+      const tag = table ? "td" : "th";
+      if (!table) { html += "<table>"; table = true; }
+      html += `<tr>${cells.map((c) => `<${tag}>${c}</${tag}>`).join("")}</tr>`;
+    }
+    else if (h) html += `<h3>${inline(h[1])}</h3>`;
     else if (bullet) { if (!list) { html += "<ul>"; list = true; } html += `<li>${inline(bullet[1])}</li>`; }
     else html += `<p>${inline(line)}</p>`;
   }
-  return html + (list ? "</ul>" : "");
+  return html + (list ? "</ul>" : "") + (table ? "</table>" : "");
 }
 
 const kb = (n) => (n > 1024 * 1024 ? (n / 1024 / 1024).toFixed(1) + " MB" : Math.max(1, Math.round(n / 1024)) + " KB");
@@ -61,6 +70,9 @@ function status(m) {
   if (!r || r.error) return "unknown";
   return r.changed ? "update" : "ok";
 }
+
+// installed mods that can't live next to m
+const conflictsOf = (m) => state.mods.filter((o) => m.conflicts.includes(o.id) && o.installed);
 
 // ---------- rendering ----------
 function renderList() {
@@ -106,10 +118,20 @@ function renderDetail() {
        <div class="progress-text">Downloading files · ${busy.done} / ${busy.total}</div></div>`
     : "";
 
+  const clash = m.installed ? conflictsOf(m) : [];
+  const warning = clash.length
+    ? `<div class="warning"><span class="dot warn"></span><span><b>${esc(m.name)}</b> and <b>${clash.map((o) => esc(o.name)).join(", ")}</b> are both installed but can't run together. Uninstall one of them.</span></div>`
+    : "";
+
+  const features = state.tab === "features";
   let notes;
   if (!r) notes = `<div class="skeleton" style="width:70%"></div><div class="skeleton" style="width:90%"></div><div class="skeleton" style="width:55%"></div>`;
   else if (r.error) notes = `<p class="notes">Couldn't load the latest release: ${esc(r.error)} <a class="link" data-act="retry">Retry</a></p>`;
+  else if (features) notes = `<div class="notes">${markdown(r.features) || "<p>No feature list yet.</p>"}</div>`;
   else notes = `<div class="notes">${markdown(r.notes) || "<p>No release notes.</p>"}</div>`;
+  const link = r && !r.error
+    ? `<a class="link" data-url="${esc(features ? `https://github.com/${m.repo}#readme` : r.url)}">View on GitHub</a>`
+    : "";
 
   const fade = state.shown !== m.id ? "fade-in" : "";
   state.shown = m.id;
@@ -125,6 +147,7 @@ function renderDetail() {
     </section>
     <section class="body ${fade}">
       <div class="actions">${main}${secondary}<div class="chips">${chips}</div></div>
+      ${warning}
       ${progress}
       <div class="stats">
         <div class="stat"><div class="k">Released</div><div class="v">${r && !r.error ? date(r.published) : "—"}</div></div>
@@ -132,7 +155,12 @@ function renderDetail() {
         <div class="stat"><div class="k">Source</div><div class="v"><a class="link" data-url="https://github.com/${esc(m.repo)}">${esc(m.repo)}</a></div></div>
       </div>
       <div class="card">
-        <div class="card-head"><h2>What's new${r && !r.error ? ` in v${esc(r.version)}` : ""}</h2>${r && !r.error ? `<a class="link" data-url="${esc(r.url)}">View on GitHub</a>` : ""}</div>
+        <div class="card-head">
+          <div class="tabs">
+            <button class="tab ${features ? "" : "active"}" data-act="tab-notes">What's new${r && !r.error ? ` in v${esc(r.version)}` : ""}</button>
+            <button class="tab ${features ? "active" : ""}" data-act="tab-features">All features</button>
+          </div>${link}
+        </div>
         ${notes}
       </div>
     </section>`;
@@ -167,17 +195,24 @@ function setKronos(path) {
 async function install(id) {
   const m = state.mods.find((x) => x.id === id);
   const updating = !!m.installed;
+  const clash = conflictsOf(m);
+  if (clash.length) {
+    const names = clash.map((o) => o.name).join(", ");
+    const ok = await confirmDialog(`Install ${m.name}?`, `${m.name} and ${names} can't be installed at the same time (FuzMenu already includes the speedrun timer). ${names} will be uninstalled. Your settings and saved data are kept.`, `Remove ${names}`);
+    if (!ok) return;
+  }
   state.busy[id] = { label: updating ? "Updating…" : "Installing…", done: 0, total: 0 };
   render();
   try {
     const v = await invoke("install", { id });
     toast(`${m.name} v${v} ${updating ? "updated" : "installed"}. Start a Zombies match to use it.`);
+    clash.forEach((o) => toast(`${o.name} uninstalled.`));
   } catch (e) {
     toast(e, "bad");
   }
   delete state.busy[id];
   await refreshMods();
-  await loadRelease(id);
+  await Promise.all([id, ...clash.map((o) => o.id)].map(loadRelease));
 }
 
 async function uninstall(id) {
@@ -215,12 +250,24 @@ document.addEventListener("click", (ev) => {
     install: () => install(id),
     uninstall: () => uninstall(id),
     folder: () => invoke("open_folder", { id }).catch((e) => toast(e, "bad")),
+    "tab-notes": () => { state.tab = "notes"; renderDetail(); },
+    "tab-features": () => { state.tab = "features"; renderDetail(); },
     retry: () => { delete state.releases[id]; render(); loadRelease(id); },
   })[act.dataset.act]?.();
 });
 
 $("win-min").onclick = () => win.minimize();
 $("win-close").onclick = () => win.close();
+$("win-max").onclick = () => win.toggleMaximize();
+// swap the maximize icon for the restore icon while maximized
+const syncMax = async () => {
+  const max = await win.isMaximized();
+  $("win-max").innerHTML = max
+    ? '<svg viewBox="0 0 10 10"><rect x="1.5" y="3" width="5.5" height="5.5"/><path d="M3 3V1.5h5.5V7H7"/></svg>'
+    : '<svg viewBox="0 0 10 10"><rect x="1.5" y="1.5" width="7" height="7"/></svg>';
+  $("win-max").title = max ? "Restore" : "Maximize";
+};
+win.onResized(syncMax);
 $("change-folder").onclick = pickFolder;
 $("setup-browse").onclick = pickFolder;
 $("open-kronos").onclick = () => invoke("open_folder", { id: null }).catch((e) => toast(e, "bad"));
@@ -234,11 +281,31 @@ listen("progress", ({ payload }) => {
   renderDetail();
 });
 
+// ---------- self update ----------
+async function checkSelfUpdate() {
+  const u = await invoke("check_self_update").catch(() => null);
+  if (!u) return;
+  const b = $("self-update");
+  b.innerHTML = `FuzMods v${esc(u.version)} available · Update`;
+  b.classList.remove("hidden");
+  b.onclick = async () => {
+    b.disabled = true;
+    b.innerHTML = `<span class="spin"></span>Updating…`;
+    try { await invoke("self_update"); } // the app restarts on success
+    catch (e) {
+      toast(e, "bad");
+      b.disabled = false;
+      b.innerHTML = `FuzMods v${esc(u.version)} available · Update`;
+    }
+  };
+}
+
 // ---------- start ----------
 (async () => {
   state.mods = await invoke("list_mods");
   state.selected = state.mods[0]?.id;
   render();
+  checkSelfUpdate();
   const k = await invoke("get_kronos");
   setKronos(k);
   if (k) await loadAll();

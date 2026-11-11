@@ -14,6 +14,7 @@ struct ModDef {
     repo: &'static str,
     tagline: &'static str,
     image: &'static str, // release asset used as the card picture
+    conflicts: &'static [&'static str], // mods that must not be installed at the same time
 }
 
 const MODS: &[ModDef] = &[
@@ -23,6 +24,7 @@ const MODS: &[ModDef] = &[
         repo: "Fuzion28/fuzmenu",
         tagline: "The all-in-one BO7 Zombies mod menu: god mode, weapons, Pack-a-Punch, perks, gobblegums, rounds, zombie spawns, game modes, Forge, boss fights and more.",
         image: "fuzmenu_logo.png",
+        conflicts: &["fuzspeedrun"], // FuzMenu already includes the speedrun timer, same Lua files
     },
     ModDef {
         id: "fuzspeedrun",
@@ -30,6 +32,7 @@ const MODS: &[ModDef] = &[
         repo: "Fuzion28/fuzspeedrun",
         tagline: "Speedrun timer for BO7 Zombies: live timer, automatic splits for every map, personal bests and a LiveSplit autosplitter.",
         image: "preview.png",
+        conflicts: &["fuzmenu"],
     },
 ];
 
@@ -50,6 +53,7 @@ struct ModInfo {
     repo: String,
     tagline: String,
     installed: Option<String>,
+    conflicts: Vec<String>,
 }
 
 #[derive(Deserialize, Clone)]
@@ -80,6 +84,8 @@ struct ReleaseInfo {
     image: Option<String>,
     size: u64,
     files: usize,
+    /// README of the repo (the "all features" page), empty if it couldn't be loaded
+    features: String,
     /// None when not installed; true when any installed file differs from the release
     changed: Option<bool>,
 }
@@ -241,6 +247,7 @@ fn list_mods(state: State<AppState>) -> Vec<ModInfo> {
             repo: m.repo.into(),
             tagline: m.tagline.into(),
             installed: k.as_deref().and_then(|k| installed_version(k, m.id)),
+            conflicts: m.conflicts.iter().map(|c| c.to_string()).collect(),
         })
         .collect()
 }
@@ -261,6 +268,16 @@ async fn latest_release(http: &reqwest::Client, repo: &str) -> Result<GhRelease,
     resp.json().await.map_err(|e| format!("Bad answer from GitHub: {e}"))
 }
 
+async fn readme(http: &reqwest::Client, repo: &str) -> Option<String> {
+    let resp = http
+        .get(format!("https://api.github.com/repos/{repo}/readme"))
+        .header("Accept", "application/vnd.github.raw")
+        .send()
+        .await
+        .ok()?;
+    resp.error_for_status().ok()?.text().await.ok()
+}
+
 #[tauri::command]
 async fn fetch_release(id: String, state: State<'_, AppState>) -> Result<ReleaseInfo, String> {
     let def = mod_def(&id)?;
@@ -274,7 +291,9 @@ async fn fetch_release(id: String, state: State<'_, AppState>) -> Result<Release
         }
         None => None,
     };
+    let features = readme(&state.http, def.repo).await.unwrap_or_default();
     Ok(ReleaseInfo {
+        features,
         version: version_of_tag(&rel.tag_name),
         title: rel.name.clone().unwrap_or_else(|| rel.tag_name.clone()),
         notes: rel.body.clone().unwrap_or_default(),
@@ -318,10 +337,22 @@ fn in_use_hint(e: std::io::Error) -> String {
 async fn install(app: AppHandle, id: String, state: State<'_, AppState>) -> Result<String, String> {
     let def = mod_def(&id)?;
     let k = kronos(&state)?;
-    install_into(&state.http, &k, def, |done, total| {
+    let v = install_into(&state.http, &k, def, |done, total| {
         let _ = app.emit("progress", Progress { id: id.clone(), done, total });
     })
-    .await
+    .await?;
+    remove_conflicts(&k, def)?;
+    Ok(v)
+}
+
+fn remove_conflicts(k: &Path, def: &ModDef) -> Result<(), String> {
+    for c in def.conflicts {
+        let dir = k.join("mods").join(c);
+        if dir.exists() {
+            fs::remove_dir_all(&dir).map_err(|e| format!("{} was installed, but {c} could not be removed ({e}). Close the game and Kronos, then uninstall it.", def.name))?;
+        }
+    }
+    Ok(())
 }
 
 async fn install_into(http: &reqwest::Client, k: &Path, def: &ModDef, progress: impl Fn(usize, usize)) -> Result<String, String> {
@@ -409,7 +440,62 @@ fn launch_kronos(state: State<AppState>) -> Result<(), String> {
     Ok(())
 }
 
+// ---------- self update ----------
+const SELF_REPO: &str = "Fuzion28/fuzmods";
+const SELF_ASSET: &str = "FuzMods.exe";
+
+/// true when version a is newer than b ("1.10.0" > "1.9.2")
+fn newer(a: &str, b: &str) -> bool {
+    let parse = |s: &str| s.split('.').map(|x| x.parse::<u64>().unwrap_or(0)).collect::<Vec<_>>();
+    parse(a) > parse(b)
+}
+
+#[derive(Serialize)]
+struct SelfUpdate {
+    version: String,
+    notes: String,
+}
+
+#[tauri::command]
+async fn check_self_update(state: State<'_, AppState>) -> Result<Option<SelfUpdate>, String> {
+    let rel = latest_release(&state.http, SELF_REPO).await?;
+    let version = version_of_tag(&rel.tag_name);
+    if !newer(&version, env!("CARGO_PKG_VERSION")) || !rel.assets.iter().any(|a| a.name == SELF_ASSET) {
+        return Ok(None);
+    }
+    Ok(Some(SelfUpdate { version, notes: rel.body.unwrap_or_default() }))
+}
+
+#[tauri::command]
+async fn self_update(app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
+    let rel = latest_release(&state.http, SELF_REPO).await?;
+    let asset = rel.assets.iter().find(|a| a.name == SELF_ASSET).ok_or("The new version has no FuzMods.exe.")?;
+    let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+    let new = exe.with_extension("exe.new");
+    download(&state.http, asset, &new).await?; // size and sha256 checked
+    // Windows lets a running exe be renamed, not overwritten: move it aside, put the new one in its place
+    let old = exe.with_extension("exe.old");
+    let _ = fs::remove_file(&old);
+    let fail = |e: std::io::Error| format!("Could not replace FuzMods ({e}). Download the new version from GitHub.");
+    fs::rename(&exe, &old).map_err(fail)?;
+    if let Err(e) = fs::rename(&new, &exe) {
+        let _ = fs::rename(&old, &exe);
+        return Err(fail(e));
+    }
+    std::process::Command::new(&exe).spawn().map_err(|e| e.to_string())?;
+    app.exit(0);
+    Ok(())
+}
+
 fn main() {
+    // remove the previous exe left by a self update, once it has exited
+    if let Ok(exe) = std::env::current_exe() {
+        std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_secs(3));
+            let _ = fs::remove_file(exe.with_extension("exe.old"));
+            let _ = fs::remove_file(exe.with_extension("exe.new"));
+        });
+    }
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
@@ -421,7 +507,7 @@ fn main() {
             app.manage(AppState { config: Mutex::new(config), http });
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![get_kronos, pick_kronos, list_mods, fetch_release, install, uninstall, open_folder, open_url, launch_kronos])
+        .invoke_handler(tauri::generate_handler![get_kronos, pick_kronos, list_mods, fetch_release, install, uninstall, open_folder, open_url, launch_kronos, check_self_update, self_update])
         .run(tauri::generate_context!())
         .expect("error while running FuzMods");
 }
@@ -429,6 +515,15 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn versions() {
+        assert!(newer("1.1.0", "1.0.0"));
+        assert!(newer("1.10.0", "1.9.9"));
+        assert!(newer("2.0", "1.9.9"));
+        assert!(!newer("1.1.0", "1.1.0"));
+        assert!(!newer("1.0.9", "1.1.0"));
+    }
 
     #[test]
     fn targets() {
@@ -475,7 +570,11 @@ mod tests {
                 assert!(files.iter().all(|(a, t)| file_matches(&dir.join(t), a)));
                 println!("{} v{} ok, {} files", def.id, v, files.len());
             }
+            assert!(readme(&http, MODS[0].repo).await.is_some_and(|r| r.contains("FuzMenu")));
         });
+        // both are installed now: installing FuzSpeedrun last must remove FuzMenu
+        remove_conflicts(&k, &MODS[1]).unwrap();
+        assert!(!k.join("mods").join("fuzmenu").exists() && k.join("mods").join("fuzspeedrun").exists());
         assert!(!k.join(".fuzmods").exists());
         let _ = rt;
         fs::remove_dir_all(&k).unwrap();

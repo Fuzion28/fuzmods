@@ -43,6 +43,14 @@ code { font-family: "Cascadia Code", Consolas, monospace; font-size: .92em; back
 .brand-name { font-size: 13.5px; letter-spacing: .2px; color: var(--muted); }
 .brand-name b { color: var(--text); font-weight: 650; }
 .win-buttons { display: flex; height: 100%; }
+.update-pill {
+  margin-left: auto; margin-right: 10px; height: 26px; padding: 0 12px; border-radius: 999px; font-size: 12px; font-weight: 650;
+  display: inline-flex; align-items: center; gap: 8px; color: #fff; background: var(--grad); box-shadow: 0 0 18px #7c5cff55;
+  transition: filter .15s;
+}
+.update-pill:hover:not(:disabled) { filter: brightness(1.12); }
+.update-pill:disabled { opacity: .7; cursor: default; }
+.update-pill .spin { width: 12px; height: 12px; }
 .win-buttons button { width: 46px; height: 100%; display: grid; place-items: center; color: var(--muted); transition: background .15s, color .15s; }
 .win-buttons button:hover { background: #ffffff0d; color: var(--text); }
 .win-buttons button.close:hover { background: #e81123; color: #fff; }
@@ -117,7 +125,7 @@ code { font-family: "Cascadia Code", Consolas, monospace; font-size: .92em; back
 .hero h1 { font-size: 40px; font-weight: 750; letter-spacing: -1px; }
 .hero .tagline { color: #c4c8d8; font-size: 14px; line-height: 1.55; margin-top: 8px; max-width: 560px; }
 
-.body { padding: 6px 40px 40px; display: flex; flex-direction: column; gap: 22px; }
+.body { max-width: 1200px; padding: 6px 40px 40px; display: flex; flex-direction: column; gap: 22px; }
 .actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .chips { display: flex; gap: 8px; margin-left: auto; }
 .chip { font-size: 12px; padding: 6px 11px; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--border); color: var(--muted); white-space: nowrap; }
@@ -130,8 +138,14 @@ code { font-family: "Cascadia Code", Consolas, monospace; font-size: .92em; back
 .progress-text { font-size: 12px; color: var(--muted); margin-top: 8px; }
 
 .card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px 24px; }
-.card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
 .card h2 { font-size: 15px; font-weight: 650; }
+.tabs { display: flex; gap: 4px; padding: 3px; border-radius: 10px; background: var(--panel-2); border: 1px solid var(--border); }
+.tab { font-size: 13px; font-weight: 650; padding: 6px 12px; border-radius: 8px; color: var(--muted); transition: background .15s, color .15s; }
+.tab:hover { color: var(--text); }
+.tab.active { background: #7c5cff2e; color: var(--text); }
+.warning { display: flex; gap: 10px; align-items: flex-start; padding: 12px 16px; border-radius: 12px; font-size: 13px; line-height: 1.5; color: #ffd9a0; background: #ffb54712; border: 1px solid #ffb54740; }
+.warning .dot { margin-top: 6px; }
 .card .sub { font-size: 12px; color: var(--dim); }
 .notes { font-size: 13.5px; line-height: 1.65; color: #c9cddb; user-select: text; }
 .notes h3 { font-size: 14px; color: var(--text); margin: 14px 0 4px; }
@@ -142,6 +156,9 @@ code { font-family: "Cascadia Code", Consolas, monospace; font-size: .92em; back
 .notes p { margin: 6px 0; }
 .notes b { color: var(--text); }
 .notes a { color: var(--accent-2); cursor: pointer; }
+.notes table { border-collapse: collapse; margin: 8px 0; font-size: 13px; }
+.notes th, .notes td { text-align: left; padding: 6px 14px 6px 0; border-bottom: 1px solid var(--border); vertical-align: top; }
+.notes th { color: var(--text); font-weight: 650; }
 
 .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 .stat { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }

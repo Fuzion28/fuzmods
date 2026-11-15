@@ -142,7 +142,7 @@ function renderDetail() {
       <div class="hero-bg ${bg ? "" : "none"}" ${bg}></div>
       ${r && r.image ? `<img class="hero-art" src="${esc(r.image)}" alt="">` : ""}
       <div class="hero-content">
-        <h1>${esc(m.name)}</h1>
+        <h1 data-text="${esc(m.name)}">${esc(m.name)}</h1>
         <p class="tagline">${esc(m.tagline)}</p>
       </div>
     </section>
@@ -283,20 +283,28 @@ listen("progress", ({ payload }) => {
 });
 
 // ---------- self update ----------
+// a newer FuzMods blocks the whole app until it is installed (only the title bar stays usable, to close the window)
 async function checkSelfUpdate() {
   const u = await invoke("check_self_update").catch(() => null);
   if (!u) return;
-  const b = $("self-update");
-  b.innerHTML = `FuzMods v${esc(u.version)} available · Update`;
-  b.classList.remove("hidden");
+  $("force-version").textContent = `v${u.version}`;
+  $("force-notes").innerHTML = markdown(u.notes);
+  $("force-notes").classList.toggle("hidden", !u.notes.trim());
+  $("force-update").classList.remove("hidden");
+  const b = $("force-go"), hint = $("force-hint");
   b.onclick = async () => {
     b.disabled = true;
     b.innerHTML = `<span class="spin"></span>Updating…`;
+    $("force-progress").classList.remove("hidden");
+    hint.classList.add("hidden");
     try { await invoke("self_update"); } // the app restarts on success
     catch (e) {
-      toast(e, "bad");
+      // the error already says to download it from GitHub; the link opens the release page
+      hint.innerHTML = `${esc(String(e))} <a class="link" data-url="https://github.com/Fuzion28/fuzmods/releases/latest">Open the download page</a>`;
+      hint.classList.remove("hidden");
+      $("force-progress").classList.add("hidden");
       b.disabled = false;
-      b.innerHTML = `FuzMods v${esc(u.version)} available · Update`;
+      b.textContent = "Try again";
     }
   };
 }
@@ -321,6 +329,7 @@ window.addEventListener("focus", () => {
   state.mods = await invoke("list_mods");
   state.selected = state.mods[0]?.id;
   render();
+  setTimeout(() => $("mod-list").classList.remove("intro"), 900);
   checkSelfUpdate();
   const k = await invoke("get_kronos");
   setKronos(k);

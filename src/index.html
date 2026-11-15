@@ -11,7 +11,6 @@
       <span class="brand-mark">F</span>
       <span class="brand-name" data-tauri-drag-region>Fuz<b>Mods</b></span>
     </div>
-    <button id="self-update" class="update-pill hidden"></button>
     <div class="win-buttons">
       <button id="win-min" title="Minimize" aria-label="Minimize"><svg viewBox="0 0 10 10"><path d="M1 5h8"/></svg></button>
       <button id="win-max" title="Maximize" aria-label="Maximize"><svg viewBox="0 0 10 10"><rect x="1.5" y="1.5" width="7" height="7"/></svg></button>
@@ -22,7 +21,7 @@
   <div class="app">
     <aside class="sidebar">
       <div class="side-label">Library</div>
-      <nav id="mod-list"></nav>
+      <nav id="mod-list" class="intro"></nav>
 
       <div class="side-bottom">
         <button id="play" class="btn btn-play">
@@ -61,6 +60,18 @@
         <button class="btn btn-ghost" id="dialog-cancel">Cancel</button>
         <button class="btn btn-danger" id="dialog-ok">Uninstall</button>
       </div>
+    </div>
+  </div>
+
+  <div id="force-update" class="force hidden">
+    <div class="force-card">
+      <span class="force-tag">Update required</span>
+      <h1>FuzMods <span id="force-version"></span></h1>
+      <p>This version of FuzMods is out of date. Update it to keep installing and updating mods. It only takes a few seconds and FuzMods restarts on its own.</p>
+      <div class="force-notes notes hidden" id="force-notes"></div>
+      <div class="progress indeterminate hidden" id="force-progress"><div></div></div>
+      <button class="btn btn-primary" id="force-go">Update now</button>
+      <p class="setup-hint hidden" id="force-hint"></p>
     </div>
   </div>
 

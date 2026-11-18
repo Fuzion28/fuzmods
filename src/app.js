@@ -6,6 +6,8 @@ const $ = (id) => document.getElementById(id);
 const state = { mods: [], releases: {}, selected: null, busy: {}, kronos: null, tab: "notes" };
 
 // ---------- helpers ----------
+// "1.2.0" -> "v1.2.0", a named build like "test" -> "version test"
+const ver = (v) => (v ? (/^\d/.test(v) ? "v" : "version ") + v : "");
 const esc = (s) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
 function inline(s) {
@@ -79,7 +81,7 @@ function renderList() {
   $("mod-list").innerHTML = state.mods.map((m) => {
     const r = state.releases[m.id];
     const s = status(m);
-    const text = { missing: r && r.unavailable ? "Unavailable for now" : "Not installed", update: "Update available", ok: `Installed · v${esc(m.installed || "")}`, unknown: `Installed · v${esc(m.installed || "")}` }[s];
+    const text = { missing: r && r.unavailable ? "Unavailable for now" : "Not installed", update: "Update available", ok: `Installed · ${esc(ver(m.installed || ""))}`, unknown: `Installed · ${esc(ver(m.installed || ""))}` }[s];
     const dot = s === "ok" ? "ok" : s === "update" ? "warn" : "";
     const icon = r && r.image ? `<img src="${esc(r.image)}" alt="">` : esc(m.name[0]);
     return `<button class="mod-item ${m.id === state.selected ? "active" : ""}" data-id="${m.id}">
@@ -101,7 +103,7 @@ function renderDetail() {
   if (busy) main = `<button class="btn btn-primary" disabled><span class="spin"></span>${busy.label}</button>`;
   else if (r && r.unavailable) main = `<button class="btn btn-primary" disabled>Unavailable for now</button>`;
   else if (s === "missing") main = `<button class="btn btn-primary" data-act="install" ${!r || r.error || anyBusy ? "disabled" : ""}><svg viewBox="0 0 24 24"><path d="M11 4h2v9.2l3.6-3.6 1.4 1.4-6 6-6-6 1.4-1.4 3.6 3.6zM5 18h14v2H5z"/></svg>Install</button>`;
-  else if (s === "update") main = `<button class="btn btn-primary" data-act="install" ${anyBusy ? "disabled" : ""}><svg viewBox="0 0 24 24"><path d="M12 4a8 8 0 0 1 7.9 6.7l-2 .3A6 6 0 0 0 6.3 9H9v2H3V5h2v2.3A8 8 0 0 1 12 4zm-7.9 9.3 2-.3A6 6 0 0 0 17.7 15H15v-2h6v6h-2v-2.3A8 8 0 0 1 4.1 13.3z"/></svg>Update to v${esc(r.version)}</button>`;
+  else if (s === "update") main = `<button class="btn btn-primary" data-act="install" ${anyBusy ? "disabled" : ""}><svg viewBox="0 0 24 24"><path d="M12 4a8 8 0 0 1 7.9 6.7l-2 .3A6 6 0 0 0 6.3 9H9v2H3V5h2v2.3A8 8 0 0 1 12 4zm-7.9 9.3 2-.3A6 6 0 0 0 17.7 15H15v-2h6v6h-2v-2.3A8 8 0 0 1 4.1 13.3z"/></svg>Update to ${esc(ver(r.version))}</button>`;
   else main = `<button class="btn btn-ghost" data-act="install" ${!r || r.error || anyBusy ? "disabled" : ""} title="Download every file again">Reinstall</button>`;
 
   const secondary = m.installed
@@ -110,8 +112,8 @@ function renderDetail() {
     : "";
 
   const chips = [
-    m.installed ? `<span class="chip ${s === "ok" ? "ok" : ""}">Installed <b>v${esc(m.installed)}</b></span>` : "",
-    r && !r.error ? `<span class="chip ${s === "update" ? "warn" : ""}">Latest <b>v${esc(r.version)}</b></span>` : "",
+    m.installed ? `<span class="chip ${s === "ok" ? "ok" : ""}">Installed <b>${esc(ver(m.installed))}</b></span>` : "",
+    r && !r.error ? `<span class="chip ${s === "update" ? "warn" : ""}">Latest <b>${esc(ver(r.version))}</b></span>` : "",
   ].join("");
 
   const progress = busy && busy.total
@@ -158,7 +160,7 @@ function renderDetail() {
       <div class="card">
         <div class="card-head">
           <div class="tabs">
-            <button class="tab ${features ? "" : "active"}" data-act="tab-notes">What's new${r && !r.error ? ` in v${esc(r.version)}` : ""}</button>
+            <button class="tab ${features ? "" : "active"}" data-act="tab-notes">What's new${r && !r.error ? ` in ${esc(ver(r.version))}` : ""}</button>
             <button class="tab ${features ? "active" : ""}" data-act="tab-features">All features</button>
           </div>${link}
         </div>
@@ -206,7 +208,7 @@ async function install(id) {
   render();
   try {
     const v = await invoke("install", { id });
-    toast(`${m.name} v${v} ${updating ? "updated" : "installed"}. Start a Zombies match to use it.`);
+    toast(`${m.name} ${ver(v)} ${updating ? "updated" : "installed"}. Start a Zombies match to use it.`);
     clash.forEach((o) => toast(`${o.name} uninstalled.`));
   } catch (e) {
     toast(e, "bad");

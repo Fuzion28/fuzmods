@@ -34,6 +34,14 @@ const MODS: &[ModDef] = &[
         image: "preview.png",
         conflicts: &["fuzmenu"],
     },
+    ModDef {
+        id: "cne",
+        name: "CAUSE AND EFFECT",
+        repo: "Fuzion28/cause-and-effect",
+        tagline: "Port of LogisticalReaper's BO3 mod: every round a random cause is paired with a random effect. Test version.",
+        image: "", // no picture: the card shows the first letter
+        conflicts: &[],
+    },
 ];
 
 #[derive(Default, Serialize, Deserialize)]

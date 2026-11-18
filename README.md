@@ -1,6 +1,6 @@
 # FuzMods
 
-A small Windows app to install and update **FuzMenu** and **FuzSpeedrun** for BO7 Zombies on Kronos.
+A small Windows app to install and update **FuzMenu**, **FuzSpeedrun** and **CAUSE AND EFFECT** for BO7 Zombies on Kronos.
 
 ![FuzMods](app-icon.png)
 
@@ -11,7 +11,7 @@ Get `FuzMods.exe` from the [latest release](https://github.com/Fuzion28/fuzmods/
 ## Features
 
 - Finds your Kronos folder automatically (or pick it with Browse)
-- One click install, update and uninstall for FuzMenu and FuzSpeedrun
+- One click install, update and uninstall for FuzMenu, FuzSpeedrun and CAUSE AND EFFECT
 - Detects updates by comparing every installed file with the latest GitHub release
 - Every download is checked (size and SHA-256) before the mod is replaced; if anything fails, the old version is restored
 - Your settings, builds, Forge saves and personal bests are never touched

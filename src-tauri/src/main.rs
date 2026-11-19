@@ -42,6 +42,14 @@ const MODS: &[ModDef] = &[
         image: "preview.png",
         conflicts: &[],
     },
+    ModDef {
+        id: "zmbots",
+        name: "ZM Bots",
+        repo: "Fuzion28/zmbots",
+        tagline: "Port of supergamer9787 / RlKk01's BO2 Zombies Bots: up to 3 AI teammates that fight, revive, buy perks and guns, open doors and follow your orders. Test version.",
+        image: "preview.png",
+        conflicts: &[],
+    },
 ];
 
 #[derive(Default, Serialize, Deserialize)]

@@ -201,7 +201,7 @@ async function install(id) {
   const clash = conflictsOf(m);
   if (clash.length) {
     const names = clash.map((o) => o.name).join(", ");
-    const ok = await confirmDialog(`Install ${m.name}?`, `${m.name} and ${names} can't be installed at the same time (FuzMenu already includes the speedrun timer). ${names} will be uninstalled. Your settings and saved data are kept.`, `Remove ${names}`);
+    const ok = await confirmDialog(`Install ${m.name}?`, `${m.name} and ${names} can't be installed at the same time (FuzMenu already has its own speedrun timer). ${names} will be uninstalled. Your settings and saved data are kept.`, `Remove ${names}`);
     if (!ok) return;
   }
   state.busy[id] = { label: updating ? "Updating…" : "Installing…", done: 0, total: 0 };

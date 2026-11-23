@@ -24,21 +24,21 @@ const MODS: &[ModDef] = &[
         repo: "Fuzion28/fuzmenu",
         tagline: "The all-in-one BO7 Zombies mod menu: god mode, weapons, Pack-a-Punch, perks, gobblegums, rounds, zombie spawns, game modes, Forge, boss fights and more.",
         image: "fuzmenu_logo.png",
-        conflicts: &["fuzspeedrun"], // FuzMenu already includes the speedrun timer, same Lua files
+        conflicts: &["livesplit_bo7", "fuzspeedrun"], // FuzMenu already includes the speedrun timer
     },
     ModDef {
-        id: "fuzspeedrun",
-        name: "FuzSpeedrun",
-        repo: "Fuzion28/fuzspeedrun",
-        tagline: "Speedrun timer for BO7 Zombies: live timer, automatic splits for every map, personal bests and a LiveSplit autosplitter.",
+        id: "livesplit_bo7",
+        name: "Livesplit BO7",
+        repo: "Fuzion28/livesplit-bo7",
+        tagline: "By Redouan B & Fuzion28: in-game speedrun splitter and practice tool with splits for every map, PBs, PB ghost, practice menu, RNG patches and a LiveSplit link. Alpha.",
         image: "preview.png",
-        conflicts: &["fuzmenu"],
+        conflicts: &["fuzmenu", "fuzspeedrun"], // fuzspeedrun: the old speedrun mod it replaces
     },
     ModDef {
         id: "cne",
         name: "CAUSE AND EFFECT",
         repo: "Fuzion28/cause-and-effect",
-        tagline: "Port of LogisticalReaper's BO3 mod: every round a random cause is paired with a random effect. Test version.",
+        tagline: "Port of LogisticalReaper's BO3 mod: every round a random cause is paired with a random effect.",
         image: "preview.png",
         conflicts: &[],
     },
@@ -145,6 +145,8 @@ fn target_path(name: &str) -> Option<String> {
         Some(format!("lua/{name}"))
     } else if lower.ends_with(".png") && lower != "preview.png" {
         Some(format!("images/{name}"))
+    } else if lower.ends_with(".asl") {
+        Some(format!("livesplit/{name}"))
     } else {
         None
     }
@@ -566,6 +568,7 @@ mod tests {
         assert_eq!(target_path("zm_mod_menu.gsc").as_deref(), Some("scripts/zm_mod_menu.gsc"));
         assert_eq!(target_path("zm_splitter_post.lua").as_deref(), Some("lua/zm_splitter_post.lua"));
         assert_eq!(target_path("fuzmenu_bg.png").as_deref(), Some("images/fuzmenu_bg.png"));
+        assert_eq!(target_path("livesplit_bo7.asl").as_deref(), Some("livesplit/livesplit_bo7.asl"));
         assert_eq!(target_path("preview.png"), None);
         assert_eq!(target_path("FuzMenu_v2.6.0.rar"), None);
         assert_eq!(target_path("../evil.lua"), None);
@@ -607,9 +610,9 @@ mod tests {
             }
             assert!(readme(&http, MODS[0].repo).await.is_some_and(|r| r.contains("FuzMenu")));
         });
-        // both are installed now: installing FuzSpeedrun last must remove FuzMenu
+        // both are installed now: installing Livesplit BO7 last must remove FuzMenu
         remove_conflicts(&k, &MODS[1]).unwrap();
-        assert!(!k.join("mods").join("fuzmenu").exists() && k.join("mods").join("fuzspeedrun").exists());
+        assert!(!k.join("mods").join("fuzmenu").exists() && k.join("mods").join("livesplit_bo7").exists());
         assert!(!k.join(".fuzmods").exists());
         let _ = rt;
         fs::remove_dir_all(&k).unwrap();
